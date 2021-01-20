@@ -22,7 +22,7 @@
 #define TPM2_NUM_PCR_BANKS      16
 #define TPM2_MAX_DIGEST_BUFFER  1024
 #define TPM2_MAX_NV_BUFFER_SIZE 2048
-#define TPM2_MAX_PCRS           32
+#define TPM2_MAX_PCRS           40
 #define TPM2_MAX_ALG_LIST_SIZE  128
 #define TPM2_MAX_CAP_CC         256
 #define TPM2_MAX_CAP_BUFFER     1024

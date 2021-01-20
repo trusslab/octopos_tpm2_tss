@@ -2284,19 +2284,21 @@ ifapi_filter_pcr_selection_by_index(
     UINT32 bank, j;
     UINT16 select;
     size_t i;
-    UINT8 selection[] = { 0, 0, 0, 0 };
+    UINT8 selection[] = { 0, 0, 0, 0, 0, 0 };
 
     for (i = 0; i < pcr_count; i++) {
         selection[0] |= (1 << pcr_index[i]) % 256;
         selection[1] |= (1 << (pcr_index[i] - 8)) % 256;
         selection[2] |= (1 << (pcr_index[i] - 16)) % 256;
         selection[3] |= (1 << (pcr_index[i] - 24)) % 256;
+        selection[4] |= (1 << (pcr_index[i] - 32)) % 256;
+        selection[5] |= (1 << (pcr_index[i] - 40)) % 256;
     };
 
     /* Remove unselected PCRs */
     for (bank = 0; bank < pcr_selection->count; bank++) {
-        if (pcr_selection->pcrSelections[bank].sizeofSelect > 4) {
-            LOG_ERROR("pcrSelection's sizeofSelect exceeds allowed value of 4, is %"PRIu16,
+        if (pcr_selection->pcrSelections[bank].sizeofSelect > 6) {
+            LOG_ERROR("pcrSelection's sizeofSelect exceeds allowed value of 6, is %"PRIu16,
                       pcr_selection->pcrSelections[bank].sizeofSelect);
             return TSS2_FAPI_RC_BAD_VALUE;
         }
@@ -2382,7 +2384,7 @@ ifapi_compute_policy_digest(
             }
             pcr_selection->pcrSelections[j].hash =
                 pcrs->pcrs[i].hashAlg;
-            pcr_selection->pcrSelections[j].sizeofSelect = 3;
+            pcr_selection->pcrSelections[j].sizeofSelect = 5;
         }
         UINT32 pcrIndex = pcrs->pcrs[i].pcr;
         if (pcrIndex + 1 > max_pcr)
