@@ -6,6 +6,7 @@ EXPORTS
     Fapi_Finalize
     Fapi_Free
     Fapi_GetTcti
+    Fapi_GetEsys
     Fapi_GetPollHandles
     Fapi_GetInfo
     Fapi_GetInfo_Async
