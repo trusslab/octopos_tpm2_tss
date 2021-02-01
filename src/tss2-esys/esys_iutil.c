@@ -358,7 +358,7 @@ TSS2_RC
 iesys_handle_to_tpm_handle(ESYS_TR esys_handle, TPM2_HANDLE * tpm_handle)
 {
     /* Since ESYS_TR_PCR0 is equal zero only <= ESYS_TR_PCR31 has to be checked */
-    if (esys_handle <= ESYS_TR_PCR31) {
+    if (esys_handle <= ESYS_TR_PCR40) {
         *tpm_handle = (TPM2_HANDLE) esys_handle;
         return TPM2_RC_SUCCESS;
     }

@@ -49,6 +49,15 @@ typedef uint32_t ESYS_TR;
 #define ESYS_TR_PCR29    29U
 #define ESYS_TR_PCR30    30U
 #define ESYS_TR_PCR31    31U
+#define ESYS_TR_PCR32    32U
+#define ESYS_TR_PCR33    33U
+#define ESYS_TR_PCR34    34U
+#define ESYS_TR_PCR35    35U
+#define ESYS_TR_PCR36    36U
+#define ESYS_TR_PCR37    37U
+#define ESYS_TR_PCR38    38U
+#define ESYS_TR_PCR39    39U
+#define ESYS_TR_PCR40    40U
 
 /* From TPM_RH_CONSTANTS */
 #define ESYS_TR_RH_OWNER       0x101U
