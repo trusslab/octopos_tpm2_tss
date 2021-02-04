@@ -2287,12 +2287,12 @@ ifapi_filter_pcr_selection_by_index(
     UINT8 selection[] = { 0, 0, 0, 0, 0, 0 };
 
     for (i = 0; i < pcr_count; i++) {
-        selection[0] |= (1 << pcr_index[i]) % 256;
-        selection[1] |= (1 << (pcr_index[i] - 8)) % 256;
-        selection[2] |= (1 << (pcr_index[i] - 16)) % 256;
-        selection[3] |= (1 << (pcr_index[i] - 24)) % 256;
-        selection[4] |= (1 << (pcr_index[i] - 32)) % 256;
-        selection[5] |= (1 << (pcr_index[i] - 40)) % 256;
+        selection[0] |= (1UL << pcr_index[i]) % 256;
+        selection[1] |= (1UL << (pcr_index[i] - 8)) % 256;
+        selection[2] |= (1UL << (pcr_index[i] - 16)) % 256;
+        selection[3] |= (1UL << (pcr_index[i] - 24)) % 256;
+        selection[4] |= (1UL << (pcr_index[i] - 32)) % 256;
+        selection[5] |= (1UL << (pcr_index[i] - 40)) % 256;
     };
 
     /* Remove unselected PCRs */
