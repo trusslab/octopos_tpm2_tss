@@ -6,6 +6,10 @@
 #ifndef TSS2_FAPI_H
 #define TSS2_FAPI_H
 
+#include <stddef.h>
+#include <stdint.h>
+
+#include "tss2_esys.h"
 #include "tss2_tcti.h"
 
 #ifdef __cplusplus
@@ -41,6 +45,10 @@ void Fapi_Finalize(
 TSS2_RC Fapi_GetTcti(
     FAPI_CONTEXT       *context,
     TSS2_TCTI_CONTEXT **tcti);
+
+TSS2_RC Fapi_GetEsys(
+    FAPI_CONTEXT  *context,
+    ESYS_CONTEXT  **esys_context);
 
 void Fapi_Free(
     void           *ptr);

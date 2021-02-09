@@ -293,7 +293,7 @@ ifapi_json_pcr_selection_deserialize(
         if (n_byte > *sizeofSelect)
             *sizeofSelect = n_byte;
     }
-    *sizeofSelect = 3;
+    *sizeofSelect = 5;
     return TSS2_RC_SUCCESS;
 }
 
