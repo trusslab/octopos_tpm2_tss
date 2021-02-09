@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
   Note that all TPM object created with a PolicyPCR with the currentPcrs
   and currentPcrsAndBank options have been created with an incorrect policy
   that ommits PCR checks. All these objects have to be recreated!
+- Fix segfault in Fapi_Finalize where a free of a constant string could occur.
+
+### Added
+- Support for auth values larger than an objects nameAlg for NV and key objects.
 
 ## [3.0.0] - 2020-08-05
 ### Changed or Fixed
