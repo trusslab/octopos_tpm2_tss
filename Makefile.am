@@ -702,6 +702,8 @@ install-data-hook: install-dirs
 
 uninstall-local:
 	-rm $(DESTDIR)$(udevrulesdir)/$(udevrulesprefix)tpm-udev.rules
+	-rm -rf $(DESTDIR)$(runstatedir)/tpm2-tss/eventlog/
+	-rm -rf $(DESTDIR)$(localstatedir)/lib/tpm2-tss/system/keystore/
 	cd $(DESTDIR)$(man3dir) && \
 		[ -L Tss2_TctiLdr_Initialize_Ex.3 ] && \
 			rm -f Tss2_TctiLdr_Initialize_Ex.3 || true
