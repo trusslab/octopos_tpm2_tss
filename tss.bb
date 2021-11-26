@@ -1,8 +1,3 @@
-#
-# This is the GPIO-DEMO apllication recipe
-#
-#
-
 SUMMARY = "recipe file for tss"
 SECTION = "PETALINUX/apps"
 LICENSE = "MIT"
@@ -17,8 +12,6 @@ DEPENDS += " \
     curl \
     pkgconfig-native \
 "
-
-#TMP = "/home/imcmy/peta/sdcard/build/tmp/work/aarch64-xilinx-linux/tss/1.0-r0/recipe-sysroot"
 
 CFLAGS_prepend = "-I ${S}/include"
 #export LIBCRYPTO_LIBS="-L${TMP}/usr/lib -lcrypto"
