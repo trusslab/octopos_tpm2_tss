@@ -92,9 +92,9 @@ signatureCallback(
     size_t         *signatureSize,
     void           *userData)
 {
-    (void)description;
-    (void)publicKey;
-    (void)publicKeyHint;
+    UNUSED(description);
+    UNUSED(publicKey);
+    UNUSED(publicKeyHint);
     uint8_t *aux_signature = NULL;
 
     if (strcmp(objectPath, "P_RSA/HS/SRK/myRsaCryptKey") != 0) {
@@ -106,8 +106,8 @@ signatureCallback(
         return TSS2_FAPI_RC_GENERAL_FAILURE;
     }
 
-    if (hashAlg != TPM2_ALG_SHA1) {
-        LOG_ERROR("hashAlg is not correct, %u != %u", hashAlg, TPM2_ALG_SHA1);
+    if (hashAlg != TPM2_ALG_SHA256) {
+        LOG_ERROR("hashAlg is not correct, %u != %u", hashAlg, TPM2_ALG_SHA256);
         return TSS2_FAPI_RC_GENERAL_FAILURE;
     }
 
@@ -117,7 +117,7 @@ signatureCallback(
     EVP_MD_CTX *mdctx =NULL;
     EVP_PKEY_CTX *pctx = NULL;
 
-    const EVP_MD *ossl_hash = EVP_sha1();
+    const EVP_MD *ossl_hash = EVP_sha256();
     chknull(ossl_hash);
 
     LOGBLOB_DEBUG(dataToSign, dataToSignSize, "Data to be signed");
@@ -129,20 +129,16 @@ signatureCallback(
     mdctx = EVP_MD_CTX_create();
     chknull(mdctx);
 
-    if (1 != EVP_DigestSignInit(mdctx, &pctx, NULL, NULL, priv_key)) {
-        goto_error(r, TSS2_FAPI_RC_GENERAL_FAILURE, "OSSL digest sign init.",
+    if (1 != EVP_DigestSignInit(mdctx, &pctx, ossl_hash, NULL, priv_key)) {
+        goto_error(r, TSS2_FAPI_RC_GENERAL_FAILURE, "OSSL sign init.",
                    error_cleanup);
     }
-    if (EVP_PKEY_type(EVP_PKEY_id(priv_key)) == EVP_PKEY_RSA) {
+    if (EVP_PKEY_base_id(priv_key) == EVP_PKEY_RSA) {
         int signing_scheme = RSA_SIG_SCHEME;
         if (1 != EVP_PKEY_CTX_set_rsa_padding(pctx, signing_scheme)) {
             goto_error(r, TSS2_FAPI_RC_GENERAL_FAILURE, "OSSL set RSA padding.",
                        error_cleanup);
         }
-    }
-    if (1 != EVP_DigestSignInit(mdctx, &pctx, ossl_hash, NULL, priv_key)) {
-        goto_error(r, TSS2_FAPI_RC_GENERAL_FAILURE, "OSSL sign init.",
-                   error_cleanup);
     }
     if (1 != EVP_DigestSignUpdate(mdctx, dataToSign, dataToSignSize)) {
         goto_error(r, TSS2_FAPI_RC_GENERAL_FAILURE, "OSSL sign update.",

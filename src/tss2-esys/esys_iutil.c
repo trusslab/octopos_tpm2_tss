@@ -578,10 +578,8 @@ iesys_gen_caller_nonces(ESYS_CONTEXT * esys_context)
  *
  * In case where command does not support param encryption/decryption
  * store the original session attributes and update them accordingly.
- * Return true is command support param encryption.
  *
- * @retval TRUE if command support param encryption
- * @retval FLASE if command does not support param encryption
+ * @retval void
  */
 static void
 iesys_update_session_flags(ESYS_CONTEXT * esys_context,
@@ -737,7 +735,6 @@ iesys_encrypt_param(ESYS_CONTEXT * esys_context,
                                                  symDef->algorithm,
                                                  symDef->keyBits.aes,
                                                  symDef->mode.aes,
-                                                 AES_BLOCK_SIZE_IN_BYTES,
                                                  &encrypt_buffer[0], paramSize,
                                                  &symKey[aes_off]);
                 return_if_error(r, "AES encryption not possible");
@@ -837,7 +834,6 @@ iesys_decrypt_param(ESYS_CONTEXT * esys_context)
                                      symDef->algorithm,
                                      symDef->keyBits.aes,
                                      symDef->mode.aes,
-                                     AES_BLOCK_SIZE_IN_BYTES,
                                      &plaintext[0], p2BSize,
                                      &symKey[aes_off]);
         return_if_error(r, "Decryption error");
@@ -1297,6 +1293,18 @@ iesys_gen_auths(ESYS_CONTEXT * esys_context,
                                     &encryptNonce);
     return_if_error(r, "More than one crypt session");
 
+    /*
+     * TPM2.0 Architecture 19.6.5 Note 7
+     *
+     * If the same session (not the first session) is used for decrypt and
+     * encrypt, its nonceTPM is only used once. If different sessions are used
+     * for decrypt and encrypt, both nonceTPMs are included
+     */
+    if (decryptNonceIdx && (decryptNonceIdx == encryptNonceIdx)) {
+        decryptNonceIdx = 0;
+    }
+
+
     /* Compute cp hash values for command buffer for all used algorithms */
 
     r = iesys_compute_cp_hashtab(esys_context,
@@ -1314,7 +1322,7 @@ iesys_gen_auths(ESYS_CONTEXT * esys_context,
                 auths->auths[auths->count].hmac.size = 0;
                 auths->count += 1;
             } else {
-                auths->auths[auths->count].sessionHandle = TPM2_RS_PW;
+                auths->auths[auths->count].sessionHandle = TPM2_RH_PW;
                 auths->auths[auths->count].hmac = objects[session_idx]->auth;
                 auths->count += 1;
             }

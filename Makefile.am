@@ -9,7 +9,7 @@
 INCLUDE_DIRS    = -I$(srcdir)/src -I$(srcdir)/include/tss2
 ACLOCAL_AMFLAGS = -I m4 --install
 AM_CFLAGS       = $(INCLUDE_DIRS) $(EXTRA_CFLAGS) $(CODE_COVERAGE_CFLAGS) \
-				  $(SANITIZER_CFLAGS)
+				  $(SANITIZER_CFLAGS) -DINTERNALBUILD=1
 AM_LDFLAGS      = $(EXTRA_LDFLAGS) $(CODE_COVERAGE_LIBS) $(SANITIZER_LDFLAGS)
 
 # Initialize empty variables to be extended throughout
@@ -216,8 +216,15 @@ EXTRA_DIST += \
     src/tss2-tcti/tcti-tbs.c \
     src/tss2-tcti/tcti-tbs.h \
     src/tss2-tcti/tss2-tcti-tbs.vcxproj \
-    src/tss2-tcti/tss2-tcti-tbs.vcxproj.filters \
     tpm2-tss.sln
+
+# tss2-dlopen wrappers
+EXTRA_DIST += \
+    tss2-dlopen/tss2-dlopen-rc.c \
+    tss2-dlopen/tss2-dlopen-tctildr.c \
+    tss2-dlopen/tss2-dlopen-mu.c \
+    tss2-dlopen/tss2-dlopen-esys.c \
+    tss2-dlopen/tss2-dlopen-fapi.c
 
 # Generate the AUTHORS file from git log
 AUTHORS :
@@ -322,8 +329,7 @@ lib_LTLIBRARIES += $(libtss2_tcti_mssim)
 pkgconfig_DATA += lib/tss2-tcti-mssim.pc
 EXTRA_DIST += lib/tss2-tcti-mssim.map \
               lib/tss2-tcti-mssim.def \
-              src/tss2-tcti/tss2-tcti-mssim.vcxproj \
-              src/tss2-tcti/tss2-tcti-mssim.vcxproj.filters
+              src/tss2-tcti/tss2-tcti-mssim.vcxproj
 
 if HAVE_LD_VERSION_SCRIPT
 src_tss2_tcti_libtss2_tcti_mssim_la_LDFLAGS  = -Wl,--version-script=$(srcdir)/lib/tss2-tcti-mssim.map
@@ -340,7 +346,7 @@ libtss2_tcti_pcap = src/tss2-tcti/libtss2-tcti-pcap.la
 tss2_HEADERS += $(srcdir)/include/tss2/tss2_tcti_pcap.h
 lib_LTLIBRARIES += $(libtss2_tcti_pcap)
 pkgconfig_DATA += lib/tss2-tcti-pcap.pc
-EXTRA_DIST += lib/tss2-tcti-pcap.map # joho TODO enable tcti-pcap for Win (.def, visual studio files
+EXTRA_DIST += lib/tss2-tcti-pcap.map
 
 if HAVE_LD_VERSION_SCRIPT
 src_tss2_tcti_libtss2_tcti_pcap_la_LDFLAGS  = -Wl,--version-script=$(srcdir)/lib/tss2-tcti-pcap.map
@@ -351,6 +357,24 @@ src_tss2_tcti_libtss2_tcti_pcap_la_SOURCES  = \
     src/tss2-tcti/tcti-pcap-builder.c \
     src/tss2-tcti/tcti-pcap.c
 endif # ENABLE_TCTI_PCAP
+
+# tcti libtpms library
+if ENABLE_TCTI_LIBTPMS
+libtss2_tcti_libtpms = src/tss2-tcti/libtss2-tcti-libtpms.la
+tss2_HEADERS += $(srcdir)/include/tss2/tss2_tcti_libtpms.h
+lib_LTLIBRARIES += $(libtss2_tcti_libtpms)
+pkgconfig_DATA += lib/tss2-tcti-libtpms.pc
+EXTRA_DIST += lib/tss2-tcti-libtpms.map
+
+if HAVE_LD_VERSION_SCRIPT
+src_tss2_tcti_libtss2_tcti_libtpms_la_LDFLAGS  = -Wl,--version-script=$(srcdir)/lib/tss2-tcti-libtpms.map
+endif # HAVE_LD_VERSION_SCRIPT
+src_tss2_tcti_libtss2_tcti_libtpms_la_LIBADD   = $(libtss2_tctildr) $(libutil)
+src_tss2_tcti_libtss2_tcti_libtpms_la_SOURCES  = \
+    src/tss2-tcti/tcti-common.c \
+    src/tss2-tcti/tcti-libtpms.c \
+    src/tss2-tcti/tcti-libtpms.h
+endif # ENABLE_TCTI_LIBTPMS
 
 # tcti library for sub-process commands
 if ENABLE_TCTI_CMD
@@ -429,8 +453,7 @@ src_tss2_esys_libtss2_esys_la_SOURCES += src/tss2-tcti/tctildr-dl.c src/tss2-tct
 endif
 EXTRA_DIST += lib/tss2-esys.map \
               lib/tss2-esys.def \
-              src/tss2-esys/tss2-esys.vcxproj \
-              src/tss2-esys/tss2-esys.vcxproj.filters
+              src/tss2-esys/tss2-esys.vcxproj
 endif #ESYS
 
 ### TCG TSS error decoding spec library ###
@@ -546,8 +569,8 @@ src_tss2_fapi_libtss2_fapi_la_LIBADD  = $(libtss2_sys) $(libtss2_mu) $(libtss2_e
     $(libutil) $(libtss2_tctildr)
 
 src_tss2_fapi_libtss2_fapi_la_SOURCES = $(TSS2_FAPI_SRC)
-src_tss2_fapi_libtss2_fapi_la_CFLAGS  = $(AM_CFLAGS) -I$(srcdir)/src/tss2-fapi
-src_tss2_fapi_libtss2_fapi_la_LDFLAGS = $(AM_LDFLAGS) $(LIBCRYPTO_LIBS) $(JSONC_LIBS) $(CURL_LIBS)
+src_tss2_fapi_libtss2_fapi_la_CFLAGS  = $(AM_CFLAGS) -I$(srcdir)/src/tss2-fapi $(CRYPTO_CFLAGS) $(JSONC_CFLAGS) $(CURL_CFLAGS)
+src_tss2_fapi_libtss2_fapi_la_LDFLAGS = $(AM_LDFLAGS) $(CRYPTO_LIBS) $(JSONC_LIBS) $(CURL_LIBS)
 if HAVE_LD_VERSION_SCRIPT
 src_tss2_fapi_libtss2_fapi_la_LDFLAGS += -Wl,--version-script=$(srcdir)/lib/tss2-fapi.map
 endif # HAVE_LD_VERSION_SCRIPT
@@ -613,8 +636,21 @@ define make_parent_dir
 endef
 
 define make_tss_user_and_group
-    (id -g tss || groupadd -r tss) && \
-    (id -u tss || useradd -r -g tss tss)
+    if type -p groupadd > /dev/null; then \
+        id -g tss 2>/dev/null || groupadd --system tss; \
+    else \
+        id -g tss 2>/dev/null || \
+        addgroup --system tss; \
+    fi && \
+    if type -p useradd > /dev/null; then \
+        id -u tss 2>/dev/null || \
+        useradd --system --home-dir / --shell `type -p nologin` \
+                         --no-create-home -g tss tss; \
+    else \
+        id -u tss 2>/dev/null || \
+        adduser --system --home / --shell `type -p nologin` \
+                --no-create-home --ingroup tss tss; \
+    fi
 endef
 
 define make_tss_dir
@@ -633,17 +669,17 @@ define make_fapi_dirs
 endef
 
 define set_fapi_permissions
-    ($(call set_tss_permissions,$(DESTDIR)$(runstatedir)/tpm2-tss)
-    ($(call set_tss_permissions,$(DESTDIR)$(localstatedir)/lib/tpm2-tss)
+    ($(call set_tss_permissions,$(DESTDIR)$(runstatedir)/tpm2-tss))
+    ($(call set_tss_permissions,$(DESTDIR)$(localstatedir)/lib/tpm2-tss))
 endef
 
 define check_dir
-    if [ ! -d "$1" ]; then echo "*** WARNING *** Directory $1 could not be created"; fi
+    if [ ! -d "$1" ]; then echo "WARNING Directory $1 could not be created"; fi
 endef
 
 define check_fapi_dirs
-    $(call check_dir,$(DESTDIR)$(runstatedir)/tpm2-tss/eventlog/)
-    $(call check_dir,$(DESTDIR)$(localstatedir)/lib/tpm2-tss/system/keystore/)
+    ($(call check_dir,$(DESTDIR)$(runstatedir)/tpm2-tss/eventlog/))
+    ($(call check_dir,$(DESTDIR)$(localstatedir)/lib/tpm2-tss/system/keystore/))
 endef
 
 ### Man Pages
@@ -690,9 +726,22 @@ EXTRA_DIST += dist/tpm-udev.rules
 
 install-dirs:
 if HOSTOS_LINUX
-	(systemd-sysusers && systemd-tmpfiles --create) || \
-	($(call make_tss_user_and_group) && $(call make_fapi_dirs) && ($call set_fapi_permissions)) || true
-	$(call check_fapi_dirs)
+if SYSD_SYSUSERS
+	@echo "systemd-sysusers $(DESTDIR)$(sysconfdir)/sysusers.d/tpm2-tss.conf"
+	@systemd-sysusers $(DESTDIR)$(sysconfdir)/sysusers.d/tpm2-tss.conf || echo "WARNING Failed to create the tss user and group"
+else
+	@echo "call make_tss_user_and_group"
+	@$(call make_tss_user_and_group) || echo "WARNING Failed to create the tss user and group"
+endif
+if SYSD_TMPFILES
+	@echo "systemd-tmpfiles --create $(DESTDIR)$(sysconfdir)/tmpfiles.d/tpm2-tss-fapi.conf"
+	@systemd-tmpfiles --create $(DESTDIR)$(sysconfdir)/tmpfiles.d/tpm2-tss-fapi.conf|| echo "WARNING Failed to create the FAPI directories with the correct permissions"
+else
+	@echo "(call make_fapi_dirs) && (call set_fapi_permissions)"
+	@-$(call make_fapi_dirs) && $(call set_fapi_permissions) || echo "WARNING Failed to create the FAPI directories with the correct permissions"
+endif
+	@echo "call check_fapi_dirs"
+	@$(call check_fapi_dirs)
 endif
 
 install-data-hook: install-dirs

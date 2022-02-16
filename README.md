@@ -1,5 +1,5 @@
 [![Build Status](https://github.com/tpm2-software/tpm2-tss/workflows/CI/badge.svg)](https://github.com/tpm2-software/tpm2-tss/actions)
-[![Windows Build status](https://ci.appveyor.com/api/projects/status/2rdmyn1ndkiavngn?svg=true)](https://ci.appveyor.com/project/tpm2-software/tpm2-tss)
+[![Windows Build status](https://ci.appveyor.com/api/projects/status/1bqv1y7rntqiewln?svg=true)](https://ci.appveyor.com/project/williamcroberts/tpm2-tss)
 [![FreeBSD Build status](https://api.cirrus-ci.com/github/tpm2-software/tpm2-tss.svg?branch=master)](https://cirrus-ci.com/github/tpm2-software/tpm2-tss)
 [![Coverity Scan](https://img.shields.io/coverity/scan/3997.svg)](https://scan.coverity.com/projects/tpm2-tss)
 [![Coverage Status](https://codecov.io/gh/tpm2-software/tpm2-tss/branch/master/graph/badge.svg)](https://codecov.io/gh/tpm2-software/tpm2-tss)
@@ -47,6 +47,8 @@ Instructions to build and install tpm2-tss are available in the [INSTALL](INSTAL
 If you're looking to discuss the source code in this project or get some questions answered you should join the 01.org TPM2 mailing list: https://lists.01.org/postorius/lists/tpm2.lists.01.org/.
 We also have an IRC channel set up on [FreeNode](https://freenode.net/) called \#tpm2.0-tss.
 You can also try Gitter [![Gitter](https://badges.gitter.im/tpm2-software/community.svg)](https://gitter.im/tpm2-software/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+
+You can join a weekly online call at [TPM.dev](https://developers.tpm.dev/events/tpmdev-online-call), where we are discussing the tpm2-tss stack, the tpm2-pkcs11 project and other Linux TPM2 & TSS2-Software.
 
 In case you want to contribute to the project, please also have a look at the [Contribution Guidelines](CONTRIBUTING.md).
 
@@ -194,23 +196,23 @@ SAPI library, TAB/RM, and Test Code Block Diagram:
 
 # Project Layout
 ```
-├── doc     : various bits of documentation\
-├── include : header files installed in $(includedir)\
-│   └── tss2      : all public headers for this project\
-├── lib     : data files used by the build or installed into $(libdir)\
-├── m4      : autoconf support macros\
-├── man     : man pages\
-├── script  : scripts used by the build or CI\
-├── src     : all source files\
-│   ├── tss2-esys : enhanced system API (ESAPI) implementation\
-│   │   └── api   : ESAPI TPM API implementation\
-│   ├── tss2-mu   : TPM2 type marshaling/unmarshaling (MU) API implementation\
-│   ├── tss2-sys  : system API (SAPI) implementation\
-│   │   └── api   : SAPI public API implementation\
-│   ├── tss2-tcti : TCTI implementations for device and mssim\
-│   └── util      : Internal utility library (e.g. logging framework)\
-└── test    : test code\
-    ├── integration : integration test harness and test cases\
-    ├── tpmclient   : monolithic, legacy test application\
-    └── unit        : unit tests
+|-- doc     : various bits of documentation\
+|-- include : header files installed in $(includedir)\
+|   +-- tss2      : all public headers for this project\
+|-- lib     : data files used by the build or installed into $(libdir)\
+|-- m4      : autoconf support macros\
+|-- man     : man pages\
+|-- script  : scripts used by the build or CI\
+|-- src     : all source files\
+|   |-- tss2-esys : enhanced system API (ESAPI) implementation\
+|   |   +-- api   : ESAPI TPM API implementation\
+|   |-- tss2-mu   : TPM2 type marshaling/unmarshaling (MU) API implementation\
+|   |-- tss2-sys  : system API (SAPI) implementation\
+|   |   +-- api   : SAPI public API implementation\
+|   |-- tss2-tcti : TCTI implementations for device and mssim\
+|   +-- util      : Internal utility library (e.g. logging framework)\
++-- test    : test code\
+    |-- integration : integration test harness and test cases\
+    |-- tpmclient   : monolithic, legacy test application\
+    +-- unit        : unit tests
 ```

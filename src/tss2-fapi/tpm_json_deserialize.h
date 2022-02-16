@@ -15,6 +15,9 @@
 #define YES 1
 #define NO 0
 
+json_object*
+ifapi_parse_json(const char *jstring) ;
+
 TSS2_RC
 ifapi_json_BYTE_array_deserialize(size_t max, json_object *jso, BYTE *out);
 
@@ -67,6 +70,9 @@ TSS2_RC
 ifapi_json_TPMA_LOCALITY_deserialize(json_object *jso, TPMA_LOCALITY *out);
 
 TSS2_RC
+ifapi_json_TPMA_ACT_deserialize(json_object *jso, TPMA_ACT *out);
+
+TSS2_RC
 ifapi_json_TPMI_YES_NO_deserialize(json_object *jso, TPMI_YES_NO *out);
 
 TSS2_RC
@@ -86,6 +92,10 @@ ifapi_json_TPMI_ALG_SYM_deserialize(json_object *jso, TPMI_ALG_SYM *out);
 TSS2_RC
 ifapi_json_TPMI_ALG_SYM_OBJECT_deserialize(json_object *jso,
         TPMI_ALG_SYM_OBJECT *out);
+
+TSS2_RC
+ifapi_json_TPMI_ALG_CIPHER_MODE_deserialize(json_object *jso,
+        TPMI_ALG_CIPHER_MODE *out);
 
 TSS2_RC
 ifapi_json_TPMI_ALG_SYM_MODE_deserialize(json_object *jso,
@@ -135,6 +145,14 @@ ifapi_json_TPMS_PCR_SELECT_deserialize(json_object *jso, TPMS_PCR_SELECT *out);
 TSS2_RC
 ifapi_json_TPMS_PCR_SELECTION_deserialize(json_object *jso,
         TPMS_PCR_SELECTION *out);
+
+TSS2_RC
+ifapi_json_TPMS_TAGGED_POLICY_deserialize(json_object *jso,
+        TPMS_TAGGED_POLICY *out);
+
+TSS2_RC
+ifapi_json_TPMS_ACT_DATA_deserialize(json_object *jso,
+        TPMS_ACT_DATA *out);
 
 TSS2_RC
 ifapi_json_TPMT_TK_CREATION_deserialize(json_object *jso,

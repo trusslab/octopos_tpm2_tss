@@ -341,6 +341,7 @@ enum IFAPI_KEY_CREATE_STATE {
     KEY_CREATE_FLUSH1,
     KEY_CREATE_FLUSH2,
     KEY_CREATE_CALCULATE_POLICY,
+    KEY_CREATE_PRIMARY_CALCULATE_POLICY,
     KEY_CREATE_WAIT_FOR_AUTHORIZATION,
     KEY_CREATE_CLEANUP,
     KEY_CREATE_WAIT_FOR_RANDOM,
@@ -386,7 +387,6 @@ typedef struct {
     uint8_t const *in_data;
     size_t in_dataSize;
     IFAPI_OBJECT *key_object;       /**< The IPAPI object for the encryption key */
-    uint8_t *out_data;               /**< The output of symmetric encrypt/decryption */
     ESYS_TR key_handle;                 /**< The ESYS handle of the encryption key */
     size_t numBytes;                /**< The number of bytes of a ESYS request */
     size_t decrypt;                 /**< Switch whether to encrypt or decrypt */
@@ -543,6 +543,7 @@ typedef struct {
     ESYS_TR ek_esys_handle;
     ESYS_TR srk_tpm_handle;
     ESYS_TR ek_tpm_handle;
+    bool srk_exists;
 } IFAPI_Provision;
 
 /** The data structure holding internal state of regenerate primary key.
@@ -774,6 +775,7 @@ enum _FAPI_STATE_PRIMARY {
     PRIMARY_READ_HIERARCHY,
     PRIMARY_READ_HIERARCHY_FINISH,
     PRIMARY_AUTHORIZE_HIERARCHY,
+    PRIMARY_GET_AUTH_VALUE,
     PRIMARY_WAIT_FOR_PRIMARY,
     PRIMARY_HAUTH_SENT,
     PRIMARY_CREATED,
@@ -873,6 +875,8 @@ enum _FAPI_STATE {
     PROVISION_WRITE_HIERARCHIES,
     PROVISION_WRITE_HIERARCHY,
     PROVISION_PREPARE_GET_CAP_AUTH_STATE,
+    PROVISION_SRK_GET_PERSISTENT_NAME,
+    PROVISION_CHECK_SRK_EVICT_CONTROL,
 
     KEY_CREATE,
     KEY_CREATE_PRIMARY,

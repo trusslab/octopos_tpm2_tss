@@ -309,6 +309,16 @@ out:
     return rc;
 }
 
+static void close_tpm(int *fd)
+{
+    if (fd == NULL || *fd < 0) {
+        return;
+    }
+
+    close(*fd);
+    *fd = -1;
+}
+
 void
 tcti_device_finalize (
     TSS2_TCTI_CONTEXT *tctiContext)
@@ -319,7 +329,7 @@ tcti_device_finalize (
     if (tcti_dev == NULL) {
         return;
     }
-    close (tcti_dev->fd);
+    close_tpm (&tcti_dev->fd);
     tcti_common->state = TCTI_STATE_FINAL;
 }
 
@@ -328,7 +338,7 @@ tcti_device_cancel (
     TSS2_TCTI_CONTEXT *tctiContext)
 {
     /* Linux driver doesn't expose a mechanism to cancel commands. */
-    (void)(tctiContext);
+    UNUSED(tctiContext);
     return TSS2_TCTI_RC_NOT_IMPLEMENTED;
 }
 
@@ -366,8 +376,8 @@ tcti_device_set_locality (
      * Linux driver doesn't expose a mechanism for user space applications
      * to set locality.
      */
-    (void)(tctiContext);
-    (void)(locality);
+    UNUSED(tctiContext);
+    UNUSED(locality);
     return TSS2_TCTI_RC_NOT_IMPLEMENTED;
 }
 
@@ -412,6 +422,7 @@ Tss2_Tcti_Device_Init (
     tcti_common->state = TCTI_STATE_TRANSMIT;
     memset (&tcti_common->header, 0, sizeof (tcti_common->header));
     tcti_common->locality = 3;
+    tcti_common->partial = false;
 
     if (conf == NULL) {
         LOG_TRACE ("No TCTI device file specified");
@@ -456,6 +467,7 @@ Tss2_Tcti_Device_Init (
     ssize_t sz = write_all (tcti_dev->fd, cmd, sizeof(cmd));
     if (sz < 0 || sz != sizeof(cmd)) {
         LOG_ERROR ("Could not probe device for partial response read support");
+        close_tpm (&tcti_dev->fd);
         return TSS2_TCTI_RC_IO_ERROR;
     }
     LOG_DEBUG ("Command sent, reading header");
@@ -466,12 +478,14 @@ Tss2_Tcti_Device_Init (
     if (rc_poll < 0 || rc_poll == 0) {
         LOG_ERROR ("Failed to poll for response from fd %d, rc %d, errno %d: %s",
                    tcti_dev->fd, rc_poll, errno, strerror(errno));
+        close_tpm (&tcti_dev->fd);
         return TSS2_TCTI_RC_IO_ERROR;
     } else if (fds.revents == POLLIN) {
         TEMP_RETRY (sz, read (tcti_dev->fd, rsp, TPM_HEADER_SIZE));
         if (sz < 0 || sz != TPM_HEADER_SIZE) {
             LOG_ERROR ("Failed to read response header fd %d, got errno %d: %s",
                        tcti_dev->fd, errno, strerror (errno));
+            close_tpm (&tcti_dev->fd);
             return TSS2_TCTI_RC_IO_ERROR;
         }
     }
@@ -483,6 +497,7 @@ Tss2_Tcti_Device_Init (
     if (rc_poll < 0) {
         LOG_DEBUG ("Failed to poll for response from fd %d, rc %d, errno %d: %s",
                    tcti_dev->fd, rc_poll, errno, strerror(errno));
+        close_tpm (&tcti_dev->fd);
         return TSS2_TCTI_RC_IO_ERROR;
 	} else if (rc_poll == 0) {
         LOG_ERROR ("timeout waiting for response from fd %d", tcti_dev->fd);
@@ -496,7 +511,7 @@ Tss2_Tcti_Device_Init (
         LOG_DEBUG ("Failed to get response tail fd %d, got errno %d: %s",
                    tcti_dev->fd, errno, strerror (errno));
         tcti_common->partial_read_supported = 0;
-        close(tcti_dev->fd);
+        close_tpm (&tcti_dev->fd);
         tcti_dev->fd = open_tpm (used_conf);
         if (tcti_dev->fd < 0) {
             LOG_ERROR ("Failed to open specified TCTI device file %s: %s",

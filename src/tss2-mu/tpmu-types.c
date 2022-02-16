@@ -122,10 +122,10 @@ static TSS2_RC marshal_keyedhash(BYTE const *src, uint8_t buffer[],
 static TSS2_RC marshal_null(void const *src, uint8_t buffer[],
                             size_t buffer_size, size_t *offset)
 {
-    (void)(src);
-    (void)(buffer);
-    (void)(buffer_size);
-    (void)(offset);
+    UNUSED(src);
+    UNUSED(buffer);
+    UNUSED(buffer_size);
+    UNUSED(offset);
     return TSS2_RC_SUCCESS;
 }
 
@@ -224,10 +224,10 @@ static TSS2_RC unmarshal_keyedhash(uint8_t const buffer[], size_t buffer_size,
 static TSS2_RC unmarshal_null(uint8_t const buffer[], size_t buffer_size,
                               size_t *offset, void *dest)
 {
-    (void)(buffer);
-    (void)(buffer_size);
-    (void)(offset);
-    (void)(dest);
+    UNUSED(buffer);
+    UNUSED(buffer_size);
+    UNUSED(offset);
+    UNUSED(dest);
     return TSS2_RC_SUCCESS;
 }
 
@@ -464,6 +464,8 @@ TPMU_MARSHAL2(TPMU_CAPABILITIES,
     TPM2_CAP_TPM_PROPERTIES, ADDR, tpmProperties, Tss2_MU_TPML_TAGGED_TPM_PROPERTY_Marshal,
     TPM2_CAP_PCR_PROPERTIES, ADDR, pcrProperties, Tss2_MU_TPML_TAGGED_PCR_PROPERTY_Marshal,
     TPM2_CAP_ECC_CURVES, ADDR, eccCurves, Tss2_MU_TPML_ECC_CURVE_Marshal,
+    TPM2_CAP_AUTH_POLICIES, ADDR, authPolicies, Tss2_MU_TPML_TAGGED_POLICY_Marshal,
+    TPM2_CAP_ACT, ADDR, actData, Tss2_MU_TPML_ACT_DATA_Marshal,
     TPM2_CAP_VENDOR_PROPERTY, ADDR, intelPttProperty, Tss2_MU_TPML_INTEL_PTT_PROPERTY_Marshal)
 TPMU_UNMARSHAL2(TPMU_CAPABILITIES,
     TPM2_CAP_ALGS, algorithms, Tss2_MU_TPML_ALG_PROPERTY_Unmarshal,
@@ -475,6 +477,8 @@ TPMU_UNMARSHAL2(TPMU_CAPABILITIES,
     TPM2_CAP_TPM_PROPERTIES, tpmProperties, Tss2_MU_TPML_TAGGED_TPM_PROPERTY_Unmarshal,
     TPM2_CAP_PCR_PROPERTIES, pcrProperties, Tss2_MU_TPML_TAGGED_PCR_PROPERTY_Unmarshal,
     TPM2_CAP_ECC_CURVES, eccCurves, Tss2_MU_TPML_ECC_CURVE_Unmarshal,
+    TPM2_CAP_AUTH_POLICIES, authPolicies, Tss2_MU_TPML_TAGGED_POLICY_Unmarshal,
+    TPM2_CAP_ACT, actData, Tss2_MU_TPML_ACT_DATA_Unmarshal,
     TPM2_CAP_VENDOR_PROPERTY, intelPttProperty, Tss2_MU_TPML_INTEL_PTT_PROPERTY_Unmarshal)
 
 TPMU_MARSHAL2(TPMU_ATTEST,

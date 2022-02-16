@@ -55,7 +55,6 @@
 #define TCP_CHECKSUM_UNUSED         0x0000
 #define TCP_URGENT_PTR_UNUSED       0x0000
 
-#define UNUSED(param)               (void)(param)
 #define SIZEOF_IN_OCTETS(x)         (sizeof (x)/sizeof (uint32_t))
 #define TO_MULTIPLE_OF_4_BYTE(x)    (((x)-1)/4*4+4) * !!(x)
 
@@ -68,14 +67,14 @@
  *  * section header block          (shb)           |<-- file header
  *  * interface statistics block    (idb)           |
  *
- *  * ┬ enhanced packet block       (epb)           |<-- single tpm req. or rsp.
+ *  * - enhanced packet block       (epb)           |<-- single tpm req. or rsp.
  *    | * header                    (epb_header)    |
- *    | * ┬ ip package                              |
+ *    | * - ip package                              |
  *    |   | * header                (ip_header)     |
- *    |   | * ┬ tcp package                         |
+ *    |   | * - tcp package                         |
  *    |   |   | * header            (tcp_header)    |
- *    |   ┴   ┴ * tpm req. or resp.                 |
- *    ┴ * footer                    (epb_footer)    |
+ *    |   -   - * tpm req. or resp.                 |
+ *    - * footer                    (epb_footer)    |
  */
 
 /* section header block */
