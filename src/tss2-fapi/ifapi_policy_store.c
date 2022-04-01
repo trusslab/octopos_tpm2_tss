@@ -17,6 +17,7 @@
 #define LOGMODULE fapi
 #include "util/log.h"
 #include "util/aux_util.h"
+#include "tpm_json_deserialize.h"
 #include "ifapi_policy_json_deserialize.h"
 #include "ifapi_policy_json_serialize.h"
 
@@ -192,14 +193,14 @@ ifapi_policy_store_load_finish(
     uint8_t *buffer = NULL;
     /* ptore parameter is used to be prepared if transmission of state information
        between async and finish will be necessary in future extensions. */
-    (void)pstore;
+    UNUSED(pstore);
 
     r = ifapi_io_read_finish(io, &buffer, NULL);
     return_try_again(r);
     return_if_error(r, "keystore read_finish failed");
 
     /* If json objects can't be parse the object store is corrupted */
-    jso = json_tokener_parse((char *)buffer);
+    jso = ifapi_parse_json((char *)buffer);
     SAFE_FREE(buffer);
     return_if_null(jso, "Policy store is corrupted (Json error).", TSS2_FAPI_RC_GENERAL_FAILURE);
 
@@ -294,7 +295,7 @@ ifapi_policy_store_store_finish(
 
     /* Pstore parameter is used to be prepared if transmission of state information
        between async and finish will be necessary in future extensions. */
-    (void)pstore;
+    UNUSED(pstore);
     /* Finish writing the policy */
     r = ifapi_io_write_finish(io);
     return_try_again(r);
@@ -303,4 +304,35 @@ ifapi_policy_store_store_finish(
     return_if_error(r, "read_finish failed");
 
     return TSS2_RC_SUCCESS;
+}
+
+ /** Check whether policy already exists.
+  *
+  * @param[in] pstore The key directories and default profile.
+  * @param[in] path The relative path of the policy.
+  * @retval TSS2_RC_SUCCESS if the object does not exist.
+  * @retval TSS2_FAPI_RC_PATH_ALREADY_EXISTS if the policy file exists.
+  * @retval TSS2_FAPI_RC_MEMORY: if memory could not be allocated to hold the output data.
+  */
+TSS2_RC
+ifapi_policystore_check_overwrite(
+    IFAPI_POLICY_STORE *pstore,
+    const char *path)
+{
+    TSS2_RC r;
+    char *abs_path = NULL;
+
+    /* Convert relative path to absolute path in keystore */
+    r = policy_rel_path_to_abs_path(pstore, path, &abs_path);
+    goto_if_error2(r, "Object %s not found.", cleanup, path);
+
+    if (ifapi_io_path_exists(abs_path)) {
+        goto_error(r, TSS2_FAPI_RC_PATH_ALREADY_EXISTS,
+                   "Object %s already exists.", cleanup, path);
+    }
+    r = TSS2_RC_SUCCESS;
+
+cleanup:
+    SAFE_FREE(abs_path);
+    return r;
 }

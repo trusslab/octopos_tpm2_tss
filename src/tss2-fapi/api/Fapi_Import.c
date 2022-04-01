@@ -159,6 +159,8 @@ Fapi_Import_Async(
     IFAPI_OBJECT *object = &command->object;
     IFAPI_EXT_PUB_KEY * extPubKey = &object->misc.ext_pub_key;
     IFAPI_DUPLICATE * keyTree = &object->misc.key_tree;
+    command->private = NULL;
+    command->parent_path = NULL;
 
     if (context->state != _FAPI_STATE_INIT) {
         return_error(TSS2_FAPI_RC_BAD_SEQUENCE, "Invalid State");
@@ -233,6 +235,12 @@ Fapi_Import_Async(
             r = ifapi_json_TPMS_POLICY_deserialize(jso, &policy);
             goto_if_error(r, "Serialize policy", cleanup_error);
 
+            /* Check whether an existing object would be overwritten */
+            r = ifapi_policystore_check_overwrite(&context->pstore,
+                                                  command->out_path);
+            goto_if_error_reset_state(r, "Check overwrite %s", cleanup_error,
+                                      command->out_path);
+
             r = ifapi_policy_store_store_async(&context->pstore, &context->io,
                     command->out_path, &policy);
             goto_if_error_reset_state(r, "Could not open: %s", cleanup_error,
@@ -250,6 +258,12 @@ Fapi_Import_Async(
 
             switch (object->objectType) {
             case IFAPI_EXT_PUB_KEY_OBJ:
+                /* Check whether an existing object would be overwritten */
+                r = ifapi_keystore_check_overwrite(&context->keystore,
+                        command->out_path);
+                goto_if_error_reset_state(r, "Check overwrite %s", cleanup_error,
+                                          command->out_path);
+
                 /* Write json string stored in importData */
                    /* Start writing the EK to the key store */
                 r = ifapi_keystore_store_async(&context->keystore, &context->io,
@@ -424,10 +438,9 @@ Fapi_Import_Finish(
             goto_if_error_reset_state(r, "Load", error_cleanup);
 
             /* Check whether object already exists in key store. */
-            r = ifapi_keystore_object_does_not_exist(&context->keystore,
-                                                     command->out_path,
-                                                     object);
-            goto_if_error_reset_state(r, "Could not write: %sh", error_cleanup,
+            r = ifapi_keystore_check_overwrite(&context->keystore,
+                                               command->out_path);
+            goto_if_error_reset_state(r, "Check overwrite %s", error_cleanup,
                                       command->out_path);
 
             /* Start writing the object to the key store */
@@ -440,7 +453,7 @@ Fapi_Import_Finish(
 
         statecase(context->state, IMPORT_WRITE);
             /* Finish writing the key to the key store */
-            r = ifapi_keystore_store_finish(&context->keystore, &context->io);
+            r = ifapi_keystore_store_finish(&context->io);
             return_try_again(r);
             return_if_error_reset_state(r, "write_finish failed");
 
@@ -485,7 +498,7 @@ Fapi_Import_Finish(
             break;
 
         statecase(context->state, IMPORT_KEY_WRITE);
-            r = ifapi_keystore_store_finish(&context->keystore, &context->io);
+            r = ifapi_keystore_store_finish(&context->io);
             return_try_again(r);
             return_if_error_reset_state(r, "write_finish failed");
 
@@ -576,6 +589,12 @@ Fapi_Import_Finish(
             r = ifapi_esys_serialize_object(context->esys, newObject);
             goto_if_error(r, "Prepare serialization", error_cleanup);
 
+            /* Check whether an existing object would be overwritten */
+            r = ifapi_keystore_check_overwrite(&context->keystore,
+                                               command->out_path);
+            goto_if_error_reset_state(r, "Check overwrite %s", error_cleanup,
+                                      command->out_path);
+
             /* Start writing the object to the key store */
             r = ifapi_keystore_store_async(&context->keystore, &context->io,
                                            command->out_path,
@@ -588,7 +607,7 @@ Fapi_Import_Finish(
 
         statecase(context->state, IMPORT_KEY_WRITE_OBJECT);
             /* Finish writing the object to the key store */
-            r = ifapi_keystore_store_finish(&context->keystore, &context->io);
+            r = ifapi_keystore_store_finish(&context->io);
             return_try_again(r);
             return_if_error_reset_state(r, "write_finish failed");
 
@@ -634,7 +653,7 @@ Fapi_Import_Finish(
 
 error_cleanup:
     SAFE_FREE(command->private);
-    if (newObject) {
+    if (newObject && newObject->objectType == IFAPI_KEY_OBJ) {
         /* Private buffer was already freed. */
         newObject->misc.key.private.buffer = NULL;
         ifapi_cleanup_ifapi_object(newObject);

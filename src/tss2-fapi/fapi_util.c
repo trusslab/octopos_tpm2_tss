@@ -362,6 +362,52 @@ ifapi_get_object_path(IFAPI_OBJECT *object)
     return NULL;
 }
 
+/** Set authorization value for a primary key to be created.
+ *
+ * The callback which provides the auth value must be defined.
+ *
+ * @param[in,out] context The FAPI_CONTEXT.
+ * @param[in]     object The auth value will be assigned to this object.
+ * @param[in,out] inSensitive The sensitive data to store the auth value.
+ *
+ * @retval TSS2_RC_SUCCESS on success.
+ * @retval TSS2_FAPI_RC_AUTHORIZATION_UNKNOWN If the callback for getting
+ *         the auth value is not defined.
+ */
+TSS2_RC
+ifapi_set_auth_primary(
+    FAPI_CONTEXT *context,
+    IFAPI_OBJECT *object,
+    TPMS_SENSITIVE_CREATE *inSensitive)
+{
+    TSS2_RC r;
+    const char *auth = NULL;
+    const char *obj_path;
+
+    memset(inSensitive, 0, sizeof(TPMS_SENSITIVE_CREATE));
+
+    if (!object->misc.key.with_auth) {
+        return TSS2_RC_SUCCESS;
+    }
+
+    obj_path = ifapi_get_object_path(object);
+
+    /* Check whether callback is defined. */
+    if (context->callbacks.auth) {
+        r = context->callbacks.auth(obj_path, object->misc.key.description,
+                                    &auth, context->callbacks.authData);
+        return_if_error(r, "AuthCallback");
+        if (auth != NULL) {
+            inSensitive->userAuth.size = strlen(auth);
+            memcpy(&inSensitive->userAuth.buffer[0], auth,
+                   inSensitive->userAuth.size);
+        }
+        return TSS2_RC_SUCCESS;
+    }
+    SAFE_FREE(auth);
+    return_error( TSS2_FAPI_RC_AUTHORIZATION_UNKNOWN, "Authorization callback not defined.");
+}
+
 /** Set authorization value for a FAPI object.
  *
  * The callback which provides the auth value must be defined.
@@ -753,14 +799,16 @@ ifapi_init_primary_finish(FAPI_CONTEXT *context, TSS2_KEY_TYPE ktype, IFAPI_OBJE
             pkey->signing_scheme = context->profiles.default_profile.ecc_signing_scheme;
         context->createPrimary.pkey_object.handle = primaryHandle;
         SAFE_FREE(pkey->serialization.buffer);
-        ifapi_cleanup_ifapi_object(&context->createPrimary.pkey_object);
         return TSS2_RC_SUCCESS;
-
 
     statecasedefault(context->primary_state);
     }
 
 error_cleanup:
+    SAFE_FREE(outPublic);
+    SAFE_FREE(creationData);
+    SAFE_FREE(creationHash);
+    SAFE_FREE(creationTicket);
     ifapi_cleanup_ifapi_object(&context->createPrimary.pkey_object);
     free_string_list(k_sub_path);
     SAFE_FREE(pkey->serialization.buffer);
@@ -848,7 +896,7 @@ ifapi_load_primary_finish(FAPI_CONTEXT *context, ESYS_TR *handle)
     IFAPI_KEY *pkey = &context->createPrimary.pkey_object.misc.key;
     TPMS_CAPABILITY_DATA **capabilityData = &context->createPrimary.capabilityData;
     TPMI_YES_NO moreData;
-    ESYS_TR auth_session;
+    ESYS_TR auth_session = ESYS_TR_NONE; /* Initialized due to scanbuild */
 
     LOG_TRACE("call");
 
@@ -923,12 +971,23 @@ ifapi_load_primary_finish(FAPI_CONTEXT *context, ESYS_TR *handle)
         memset(&context->createPrimary.inSensitive, 0, sizeof(TPM2B_SENSITIVE_CREATE));
         memset(&context->createPrimary.outsideInfo, 0, sizeof(TPM2B_DATA));
         memset(&context->createPrimary.creationPCR, 0, sizeof(TPML_PCR_SELECTION));
+        fallthrough;
+
+    statecase(context->primary_state, PRIMARY_GET_AUTH_VALUE);
+        /* Get the auth value to be stored in inSensitive */
+        r = ifapi_set_auth_primary(context, pkey_object,
+                                   &context->createPrimary.inSensitive.sensitive);
+        return_try_again(r);
+        goto_if_error_reset_state(r, "Get auth value for primary", error_cleanup);
 
         /* Prepare primary creation. */
+        TPM2B_PUBLIC public = pkey->public;
+        memset(&public.publicArea.unique, 0, sizeof(TPMU_PUBLIC_ID));
+
         r = Esys_CreatePrimary_Async(context->esys, hierarchy->handle,
                                      auth_session, ESYS_TR_NONE, ESYS_TR_NONE,
                                      &context->createPrimary.inSensitive,
-                                     &pkey->public,
+                                     &public,
                                      &context->createPrimary.outsideInfo,
                                      &context->createPrimary.creationPCR);
         return_if_error(r, "CreatePrimary");
@@ -1918,7 +1977,6 @@ ifapi_load_key_finish(FAPI_CONTEXT *context, bool flush_parent)
         } else {
             LOG_TRACE("success");
             ifapi_cleanup_ifapi_object(context->loadKey.key_object);
-            ifapi_cleanup_ifapi_object(&context->loadKey.auth_object);
             return TSS2_RC_SUCCESS;
         }
         break;
@@ -2333,7 +2391,7 @@ ifapi_nv_write(
 
     statecase(context->nv_cmd.nv_write_state, NV2_WRITE_WRITE);
         /* Finish writing the NV object to the key store */
-        r = ifapi_keystore_store_finish(&context->keystore, &context->io);
+        r = ifapi_keystore_store_finish(&context->io);
         return_try_again(r);
         return_if_error_reset_state(r, "write_finish failed");
 
@@ -2939,8 +2997,6 @@ ifapi_initialize_object(
 {
     TSS2_RC r = TSS2_RC_SUCCESS;
     ESYS_TR handle;
-    const char *path;
-    size_t pos = 0, pos2;
 
     switch (object->objectType) {
     case IFAPI_NV_OBJ:
@@ -2965,38 +3021,6 @@ ifapi_initialize_object(
         }
         object->authorization_state = AUTH_INIT;
         object->handle = handle;
-        break;
-
-    case IFAPI_HIERARCHY_OBJ:
-        path = object->rel_path;
-        if (path) {
-            /* Determine esys handle from pathname. */
-            if (strncmp("/", &path[0], 1) == 0)
-                pos += 1;
-            /* Skip profile if it does exist in path */
-            if (strncmp("P_", &path[pos], 2) == 0) {
-                char *  start = strchr(&path[pos], IFAPI_FILE_DELIM_CHAR);
-                if (start) {
-                    pos2 = (int)(start - &path[pos]);
-                    pos = pos2 + 2;
-                } else {
-                    return_error(TSS2_FAPI_RC_GENERAL_FAILURE, "Invalid path.");
-                }
-            }
-
-            if (strcmp(&path[pos], "HS") == 0) {
-                object->handle = ESYS_TR_RH_OWNER;
-            } else if (strcmp(&path[pos], "HE") == 0) {
-                object->handle = ESYS_TR_RH_ENDORSEMENT;
-            } else if (strcmp(&path[pos], "LOCKOUT") == 0) {
-                object->handle = ESYS_TR_RH_LOCKOUT;
-            } else  if (strcmp(&path[pos], "HN") == 0) {
-                object->handle = ESYS_TR_RH_NULL;
-            } else {
-                return_error(TSS2_FAPI_RC_GENERAL_FAILURE, "Invalid path.");
-            }
-        }
-        object->authorization_state = AUTH_INIT;
         break;
 
     default:
@@ -3176,8 +3200,7 @@ ifapi_key_create_prepare(
     return_if_error(r, "Initialize Key_Create");
 
     /* First check whether an existing object would be overwritten */
-    r = ifapi_keystore_check_overwrite(&context->keystore, &context->io,
-                                       keyPath);
+    r = ifapi_keystore_check_overwrite(&context->keystore, keyPath);
     return_if_error2(r, "Check overwrite %s", keyPath);
 
     context->srk_handle = 0;
@@ -3546,7 +3569,7 @@ ifapi_key_create(
 
     statecase(context->cmd.Key_Create.state, KEY_CREATE_WRITE);
         /* Finish writing the key to the key store */
-        r = ifapi_keystore_store_finish(&context->keystore, &context->io);
+        r = ifapi_keystore_store_finish(&context->io);
         return_try_again(r);
         return_if_error_reset_state(r, "write_finish failed");
 
@@ -3616,11 +3639,16 @@ ifapi_get_sig_scheme(
     TPMI_ALG_HASH hash_alg;
     TSS2_RC r;
 
-    if (padding) {
-        /* Get hash algorithm from digest size */
-        r = ifapi_get_hash_alg_for_size(digest->size, &hash_alg);
-        return_if_error2(r, "Invalid digest size.");
+    /* Get hash algorithm from digest size */
+    r = ifapi_get_hash_alg_for_size(digest->size, &hash_alg);
+    return_if_error2(r, "Invalid digest size");
 
+    if (digest->size == TPM2_SM3_256_DIGEST_SIZE &&
+        object->misc.key.signing_scheme.details.any.hashAlg == TPM2_ALG_SM3_256) {
+        hash_alg = TPM2_ALG_SM3_256;
+    }
+
+    if (padding) {
         /* Use scheme object from context */
         if (strcasecmp("RSA_SSA", padding) == 0) {
             context->Key_Sign.scheme.scheme = TPM2_ALG_RSASSA;
@@ -3635,10 +3663,6 @@ ifapi_get_sig_scheme(
     } else {
         /* Use scheme defined for object */
         *sig_scheme = object->misc.key.signing_scheme;
-        /* Get hash algorithm from digest size */
-        r = ifapi_get_hash_alg_for_size(digest->size, &hash_alg);
-        return_if_error2(r, "Invalid digest size.");
-
         sig_scheme->details.any.hashAlg = hash_alg;
         return TSS2_RC_SUCCESS;
     }
@@ -4285,7 +4309,7 @@ ifapi_get_certificates(
         context->nv_cmd.nv_object.misc.nv.public.nvPublic.attributes = TPMA_NV_NO_DA;
 
         r = ifapi_keystore_load_async(&context->keystore, &context->io, "/HS");
-        return_if_error2(r, "Could not open hierarchy /HS");
+        goto_if_error_reset_state(r, "Could not open hierarchy /HS", error);
 
         fallthrough;
 
@@ -4309,7 +4333,7 @@ ifapi_get_certificates(
         context->session2 = ESYS_TR_NONE;
         context->nv_cmd.nv_read_state = NV_READ_INIT;
         memset(&context->nv_cmd.nv_object, 0, sizeof(IFAPI_OBJECT));
-        Esys_Free(context->cmd.Provision.nvPublic);
+        SAFE_FREE(context->cmd.Provision.nvPublic);
         fallthrough;
 
     statecase(context->get_cert_state, GET_CERT_READ_CERT);
@@ -4339,7 +4363,7 @@ ifapi_get_certificates(
     }
 
 error:
-    SAFE_FREE(context->cmd.Provision.capabilityData);
+    SAFE_FREE(context->cmd.Provision.nvPublic);
     SAFE_FREE(context->cmd.Provision.capabilityData);
     ifapi_cleanup_ifapi_object(&context->nv_cmd.auth_object);
     ifapi_free_object_list(*cert_list);
@@ -4556,6 +4580,35 @@ ifapi_create_primary(
                                        "hierarchy.", error_cleanup);
         }
 
+        if (context->cmd.Key_Create.policyPath
+            && strcmp(context->cmd.Key_Create.policyPath, "") != 0)
+            context->cmd.Key_Create.state = KEY_CREATE_PRIMARY_CALCULATE_POLICY;
+        /* else jump over to KEY_CREATE_PRIMARY_WAIT_FOR_SESSION below */
+    /* FALLTHRU */
+    case KEY_CREATE_PRIMARY_CALCULATE_POLICY:
+        if (context->cmd.Key_Create.state == KEY_CREATE_PRIMARY_CALCULATE_POLICY) {
+            r = ifapi_calculate_tree(context, context->cmd.Key_Create.policyPath,
+                                     &context->policy.policy,
+                                     context->cmd.Key_Create.public_templ.public.publicArea.nameAlg,
+                                     &context->policy.digest_idx,
+                                     &context->policy.hash_size);
+            return_try_again(r);
+            goto_if_error2(r, "Calculate policy tree %s", error_cleanup,
+                           context->cmd.Key_Create.policyPath);
+
+            /* Store the calculated policy in the key object */
+            object->policy = calloc(1, sizeof(TPMS_POLICY));
+            return_if_null(object->policy, "Out of memory",
+                    TSS2_FAPI_RC_MEMORY);
+            *(object->policy) = context->policy.policy;
+
+            context->cmd.Key_Create.public_templ.public.publicArea.authPolicy.size =
+                context->policy.hash_size;
+            memcpy(&context->cmd.Key_Create.public_templ.public.publicArea.authPolicy.buffer[0],
+                   &context->policy.policy.policyDigests.digests[context->policy.digest_idx].digest,
+                   context->policy.hash_size);
+        }
+
         r = ifapi_get_sessions_async(context,
                                      IFAPI_SESSION_GENEK | IFAPI_SESSION1,
                                      TPMA_SESSION_ENCRYPT | TPMA_SESSION_DECRYPT, 0);
@@ -4699,7 +4752,7 @@ ifapi_create_primary(
 
     statecase(context->cmd.Key_Create.state, KEY_CREATE_PRIMARY_WRITE);
         /* Finish writing the key to the key store */
-        r = ifapi_keystore_store_finish(&context->keystore, &context->io);
+        r = ifapi_keystore_store_finish(&context->io);
         return_try_again(r);
         return_if_error_reset_state(r, "write_finish failed");
 

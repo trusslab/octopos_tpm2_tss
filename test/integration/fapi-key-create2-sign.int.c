@@ -41,8 +41,8 @@ branch_callback(
     size_t       *selectedBranch,
     void         *userData)
 {
-    (void) description;
-    (void) userData;
+    UNUSED(description);
+    UNUSED(userData);
 
     if (strcmp(objectPath, "P_ECC/HS/SRK/myDecryptKey1/myDecryptKey2/") != 0) {
         return_error(TSS2_FAPI_RC_BAD_VALUE, "Unexpected path");
@@ -119,8 +119,8 @@ auth_callback(
     const char **auth,
     void *userData)
 {
-    (void)description;
-    (void)userData;
+    UNUSED(description);
+    UNUSED(userData);
 
     if (!objectPath) {
         return_error(TSS2_FAPI_RC_BAD_VALUE, "No path.");
@@ -373,6 +373,10 @@ test_fapi_key_create_sign(FAPI_CONTEXT *context)
     r = pcr_reset(context, 16);
     goto_if_error(r, "Error pcr_reset", error);
 
+    /* We need to reset the passwords again, in order to not brick physical TPMs */
+    r = Fapi_ChangeAuth(context, "/HS", NULL);
+    goto_if_error(r, "Error Fapi_ChangeAuth", error);
+
     r = Fapi_Delete(context, "/");
     goto_if_error(r, "Error Fapi_Delete", error);
 
@@ -405,6 +409,7 @@ error:
     SAFE_FREE(policy);
     SAFE_FREE(publicKey);
     SAFE_FREE(signature);
+    SAFE_FREE(certificate);
     return EXIT_FAILURE;
 }
 

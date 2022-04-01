@@ -165,28 +165,30 @@ ifapi_profiles_initialize_finish(
     r = ifapi_io_read_finish(io, &buffer, NULL);
     return_if_error(r, "Reading profile failed");
 
-    jso = json_tokener_parse((char *) buffer);
+    jso = ifapi_parse_json((char *) buffer);
     free(buffer);
     if (jso == NULL) {
         LOG_ERROR("Failed to parse profile %s", profiles->filenames[profiles->profiles_idx]);
-        return TSS2_FAPI_RC_BAD_VALUE;
+        r = TSS2_FAPI_RC_BAD_VALUE;
+        goto error;
     }
 
     r = ifapi_profile_json_deserialize(jso,
             &profiles->profiles[profiles->profiles_idx].profile);
     json_object_put(jso);
-    return_if_error2(r, "Parsing profile %s failed",
-                     profiles->filenames[profiles->profiles_idx]);
+    goto_if_error2(r, "Parsing profile %s failed", error,
+                   profiles->filenames[profiles->profiles_idx]);
 
     r = ifapi_profile_checkpcrs(&profiles->profiles[profiles->profiles_idx].profile.pcr_selection);
-    return_if_error2(r, "Malformed profile pcr selection for profile %s",
-                     profiles->filenames[profiles->profiles_idx]);
+    goto_if_error2(r, "Malformed profile pcr selection for profile %s", error,
+                   profiles->filenames[profiles->profiles_idx]);
 
     profiles->profiles_idx += 1;
 
     if (profiles->profiles_idx < profiles->num_profiles) {
         r = ifapi_io_read_async(io, profiles->filenames[profiles->profiles_idx]);
-        return_if_error2(r, "Reading profile %s", profiles->filenames[profiles->profiles_idx]);
+        goto_if_error2(r, "Reading profile %s", error,
+                       profiles->filenames[profiles->profiles_idx]);
 
         return TSS2_FAPI_RC_TRY_AGAIN;
     }
@@ -201,7 +203,8 @@ ifapi_profiles_initialize_finish(
     if (i == profiles->num_profiles) {
         LOG_ERROR("Default profile %s not in the list of loaded profiles",
                   profiles->default_name);
-        return TSS2_FAPI_RC_BAD_VALUE;
+        r = TSS2_FAPI_RC_BAD_VALUE;
+        goto error;
     }
 
     for (i = 0; i < profiles->num_profiles; i++) {
@@ -210,6 +213,14 @@ ifapi_profiles_initialize_finish(
     SAFE_FREE(profiles->filenames);
 
     return TSS2_RC_SUCCESS;
+
+ error:
+    for (i = 0; i < profiles->num_profiles; i++) {
+        SAFE_FREE(profiles->filenames[i]);
+    }
+    SAFE_FREE(profiles->filenames);
+    ifapi_profiles_finalize(profiles);
+    return r;
 }
 
 /** Return the profile data for a given profile name.
@@ -336,6 +347,7 @@ ifapi_profile_json_deserialize(
     };
 
     LOG_TRACE("call");
+    memset(out, 0, sizeof(IFAPI_PROFILE));
     return_if_null(out, "Bad reference.", TSS2_FAPI_RC_BAD_REFERENCE);
 
     if (!ifapi_get_sub_object(jso, "type", &jso2)) {
@@ -398,7 +410,7 @@ ifapi_profile_json_deserialize(
         LOG_ERROR("Field \"sym_mode\" not found.");
         return TSS2_FAPI_RC_BAD_VALUE;
     }
-    r = ifapi_json_TPMI_ALG_SYM_MODE_deserialize(jso2, &out->sym_mode);
+    r = ifapi_json_TPMI_ALG_CIPHER_MODE_deserialize(jso2, &out->sym_mode);
     return_if_error(r, "Bad value for field \"sym_mode\".");
 
     if (!ifapi_get_sub_object(jso, "sym_parameters", &jso2)) {
