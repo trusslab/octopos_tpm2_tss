@@ -32,8 +32,8 @@ auth_callback(
     const char **auth,
     void *userData)
 {
-    (void)description;
-    (void)userData;
+    UNUSED(description);
+    UNUSED(userData);
 
     if (!objectPath) {
         return_error(TSS2_FAPI_RC_BAD_VALUE, "No path.");
@@ -112,6 +112,9 @@ test_fapi_key_create_sign_password_provision(FAPI_CONTEXT *context)
     /* We need to reset the passwords again, in order to not brick physical TPMs */
     r = Fapi_Provision(context, NULL, PASSWORD, NULL);
     goto_if_error(r, "Error Fapi_Provision", error);
+
+    r = pcr_reset(context, 16);
+    goto_if_error(r, "Error pcr_reset", error);
 
     r = Fapi_SetAuthCB(context, auth_callback, NULL);
     goto_if_error(r, "Error SetPolicyAuthCallback", error);

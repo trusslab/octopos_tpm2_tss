@@ -31,36 +31,6 @@
 #define LOGMODULE tests
 #include "util/log.h"
 
-/* 4 copies from ifapi_helpers.c */
-
-void
-ifapi_check_json_object_fields(
-    json_object *jso,
-    char** field_tab,
-    size_t size_of_tab)
-{
-    enum json_type type;
-    bool found;
-    size_t i;
-
-    type = json_object_get_type(jso);
-    if (type == json_type_object) {
-        json_object_object_foreach(jso, key, val) {
-            (void)val;
-            found = false;
-            for (i = 0; i < size_of_tab; i++) {
-                if (strcmp(key, field_tab[i]) == 0) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                LOG_WARNING("Invalid field: %s", key);
-            }
-        }
-    }
-}
-
 static void
 cleanup_policy_element(TPMT_POLICYELEMENT *policy)
 {
@@ -1116,6 +1086,44 @@ check_json_structs(void **state)
         "}";
     CHECK_JSON(TPMT_KEYEDHASH_SCHEME, test_json_TPMT_KEYEDHASH_SCHEME_xor_src, test_json_TPMT_KEYEDHASH_SCHEME_xor_expt);
 
+    const char *test_json_TPMS_TAGGED_POLICY_sha256_src =
+        "{\n"
+        "    \"handle\":0,"
+        "    \"policyHash\": {\n"
+        "        \"hashAlg\":\"SHA256\",\n"
+        "        \"digest\":\"59215cb6c21a60e26b2cc479334a021113611903795507c1227659e2aef23d16\"\n"
+        "    }\n"
+        "}";
+
+    const char *test_json_TPMS_TAGGED_POLICY_sha256_expt =
+        "{\n"
+        "    \"handle\":0,"
+        "    \"policyHash\": {\n"
+        "        \"hashAlg\":\"SHA256\",\n"
+        "        \"digest\":\"59215cb6c21a60e26b2cc479334a021113611903795507c1227659e2aef23d16\"\n"
+        "    }\n"
+        "}";
+    CHECK_JSON(TPMS_TAGGED_POLICY, test_json_TPMS_TAGGED_POLICY_sha256_src, test_json_TPMS_TAGGED_POLICY_sha256_expt);
+
+    const char *test_json_TPMS_ACT_DATA_src =
+        "{"
+        "    \"handle\":0,"
+        "    \"timeout\":23,"
+        "    \"attributes\":["
+        "      \"signaled\""
+        "    ],"
+        "}";
+
+    const char *test_json_TPMS_ACT_DATA_expt =
+        "{\n"
+        "    \"handle\":0,\n"
+        "    \"timeout\":23,\n"
+        "    \"attributes\":{"
+        "      \"signaled\":1,"
+        "      \"preserveSignaled\":0"
+        "    }"
+        "}";
+    CHECK_JSON(TPMS_ACT_DATA, test_json_TPMS_ACT_DATA_src, test_json_TPMS_ACT_DATA_expt);
 }
 
 static void
@@ -1164,6 +1172,36 @@ check_json_bits(void **state)
                       "\"0\"",
                       "{\"fixedTPM\":0,\"stClear\":0,\"fixedParent\":0,\"sensitiveDataOrigin\":0,\"userWithAuth\":0,"
                       "\"adminWithPolicy\":0,\"noDA\":0,\"encryptedDuplication\":0,\"restricted\":0,\"decrypt\":0,\"sign\":0}");
+    CHECK_JSON_SIMPLE(TPMA_ACT,
+                      "\"0\"",
+                      "{\"signaled\":0,\"preserveSignaled\":0}");
+    CHECK_JSON_SIMPLE(TPMA_ACT,
+                      "0",
+                      "{\"signaled\":0,\"preserveSignaled\":0}");
+    CHECK_JSON_SIMPLE(TPMA_ACT,
+                      "\"1\"",
+                      "{\"signaled\":1,\"preserveSignaled\":0}");
+    CHECK_JSON_SIMPLE(TPMA_ACT,
+                      "1",
+                      "{\"signaled\":1,\"preserveSignaled\":0}");
+    CHECK_JSON_SIMPLE(TPMA_ACT,
+                      "\"2\"",
+                      "{\"signaled\":0,\"preserveSignaled\":1}");
+    CHECK_JSON_SIMPLE(TPMA_ACT,
+                      "2",
+                      "{\"signaled\":0,\"preserveSignaled\":1}");
+    CHECK_JSON_SIMPLE(TPMA_ACT,
+                      "\"3\"",
+                      "{\"signaled\":1,\"preserveSignaled\":1}");
+    CHECK_JSON_SIMPLE(TPMA_ACT,
+                      "3",
+                      "{\"signaled\":1,\"preserveSignaled\":1}");
+    CHECK_JSON_SIMPLE(TPMA_ACT,
+                    "{\"signaled\":1,\"preserveSignaled\":0}",
+                    "{\"signaled\":1,\"preserveSignaled\":0}");
+    CHECK_JSON_SIMPLE(TPMA_ACT,
+                    "{\"signaled\":0,\"preserveSignaled\":1}",
+                    "{\"signaled\":0,\"preserveSignaled\":1}");
 
     const char *test_json_TPMA_NV_expected =\
                     "{"
@@ -2260,6 +2298,12 @@ check_tpmjson_tofromtxt(void **state)
     }
 }
 
+static void
+check_invalid_json(void **state) {
+      json_object *jso = ifapi_parse_json("{\n \"field\", \"value\"");
+      assert_null(jso);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -2275,6 +2319,7 @@ main(int argc, char *argv[])
         cmocka_unit_test(check_policy_bin),
         cmocka_unit_test(check_error),
         cmocka_unit_test(check_json_policy),
+        cmocka_unit_test(check_invalid_json),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

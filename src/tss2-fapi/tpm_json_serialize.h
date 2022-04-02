@@ -71,6 +71,9 @@ TSS2_RC
 ifapi_json_TPMA_CC_serialize(const TPMA_CC in, json_object **jso);
 
 TSS2_RC
+ifapi_json_TPMA_ACT_serialize(const TPMA_ACT in, json_object **jso);
+
+TSS2_RC
 ifapi_json_TPMI_YES_NO_serialize(const TPMI_YES_NO in, json_object **jso);
 
 TSS2_RC
@@ -91,6 +94,10 @@ ifapi_json_TPMI_ALG_SYM_OBJECT_serialize(const TPMI_ALG_SYM_OBJECT in,
 TSS2_RC
 ifapi_json_TPMI_ALG_SYM_MODE_serialize(const TPMI_ALG_SYM_MODE in,
                                        json_object **jso);
+
+TSS2_RC
+ifapi_json_TPMI_ALG_CIPHER_MODE_serialize(const TPMI_ALG_CIPHER_MODE in,
+                                          json_object **jso);
 
 TSS2_RC
 ifapi_json_TPMI_ALG_KDF_serialize(const TPMI_ALG_KDF in, json_object **jso);
@@ -156,6 +163,13 @@ ifapi_json_TPMS_TAGGED_PCR_SELECT_serialize(const TPMS_TAGGED_PCR_SELECT *in,
         json_object **jso);
 
 TSS2_RC
+ifapi_json_TPMS_TAGGED_POLICY_serialize(const TPMS_TAGGED_POLICY *in,
+                                        json_object **jso);
+
+TSS2_RC
+ifapi_json_TPMS_ACT_DATA_serialize(const TPMS_ACT_DATA *in, json_object **jso);
+
+TSS2_RC
 ifapi_json_TPML_CC_serialize(const TPML_CC *in, json_object **jso);
 
 TSS2_RC
@@ -187,6 +201,13 @@ ifapi_json_TPML_TAGGED_PCR_PROPERTY_serialize(const TPML_TAGGED_PCR_PROPERTY
 TSS2_RC
 ifapi_json_TPML_ECC_CURVE_serialize(const TPML_ECC_CURVE *in,
                                     json_object **jso);
+
+TSS2_RC
+ifapi_json_TPML_TAGGED_POLICY_serialize(const TPML_TAGGED_POLICY *in,
+                                        json_object **jso);
+
+TSS2_RC
+ifapi_json_TPML_ACT_DATA_serialize(const TPML_ACT_DATA *in, json_object **jso);
 
 TSS2_RC
 ifapi_json_TPMU_CAPABILITIES_serialize(const TPMU_CAPABILITIES *in,

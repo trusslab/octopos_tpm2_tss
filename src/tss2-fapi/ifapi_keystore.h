@@ -40,6 +40,7 @@ typedef struct {
     TPM2B_NAME                                     name;    /**< Name of the key */
     TPMI_YES_NO                               with_auth;    /**< Authorization provided during creation */
     UINT32                                  reset_count;    /**< The TPM reset count during key creation */
+    TPMI_YES_NO                       delete_prohibited;    /**< Persistent object should not be deleted.  */
 } IFAPI_KEY;
 
 /** Type for representing a external public key
@@ -58,6 +59,7 @@ typedef struct {
     TPM2B_DIGEST                             authPolicy;
     ESYS_TR                                  esysHandle;
     bool                                      authorized;   /**< Switch whether hiearchy is authorized. */
+    TPM2B_NAME                                     name;    /**< Name of the hierarchy */
 } IFAPI_HIERARCHY;
 
 /** Type for representing a FAPI NV object
@@ -188,7 +190,6 @@ ifapi_keystore_store_async(
 
 TSS2_RC
 ifapi_keystore_store_finish(
-    IFAPI_KEYSTORE *keystore,
     IFAPI_IO *io);
 
 TSS2_RC
@@ -225,13 +226,11 @@ ifapi_keystore_search_nv_obj(
 TSS2_RC
 ifapi_keystore_check_overwrite(
     IFAPI_KEYSTORE *keystore,
-    IFAPI_IO *io,
     const char *path);
 
 TSS2_RC
 ifapi_keystore_check_writeable(
     IFAPI_KEYSTORE *keystore,
-    IFAPI_IO *io,
     const char *path);
 
 TSS2_RC

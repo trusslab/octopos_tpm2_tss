@@ -147,13 +147,14 @@ TPMS_PCR_UNMARSHAL(TPMS_TAGGED_PCR_SELECT, \
                              dest? &dest->tag : NULL))
 
 #define TPMS_MARSHAL_0(type) \
-TSS2_RC Tss2_MU_##type##_Marshal(type const *src, uint8_t buffer[], \
-                                 size_t buffer_size, size_t *offset) \
+TSS2_RC Tss2_MU_##type##_Marshal(type const *src, \
+                                 uint8_t buffer[], \
+                                 size_t buffer_size, \
+                                 size_t *offset) \
 { \
-    (void)(buffer); \
-    (void)(buffer_size); \
-    (void)(offset); \
-\
+    UNUSED(buffer); \
+    UNUSED(buffer_size); \
+    UNUSED(offset); \
     if (!src) { \
         LOG_WARNING("src param is NULL"); \
         return TSS2_MU_RC_BAD_REFERENCE; \
@@ -170,9 +171,9 @@ TSS2_RC Tss2_MU_##type##_Marshal(type const *src, uint8_t buffer[], \
 TSS2_RC Tss2_MU_##type##_Unmarshal(uint8_t const buffer[], size_t buffer_size, \
                                    size_t *offset, type *dest) \
 { \
-    (void)(buffer); \
-    (void)(buffer_size); \
-    (void)(offset); \
+    UNUSED(buffer); \
+    UNUSED(buffer_size); \
+    UNUSED(offset); \
 \
     if (!dest) { \
         LOG_WARNING("src param is NULL"); \

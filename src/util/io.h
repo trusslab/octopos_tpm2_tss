@@ -33,6 +33,13 @@ typedef SSIZE_T ssize_t;
         __ret = exp; \
     } while (__ret == SOCKET_ERROR && WSAGetLastError() == WSAEINTR); \
     dest = __ret; }
+#elif defined (__FreeBSD__)
+#define TEMP_RETRY(dest, exp) \
+{   int __ret; \
+    do { \
+        __ret = exp; \
+    } while ((__ret == SOCKET_ERROR) && (errno == EINTR || errno == EAGAIN)); \
+    dest =__ret; }
 #else
 #define TEMP_RETRY(dest, exp) \
 {   int __ret; \
@@ -68,10 +75,26 @@ write_all (
     SOCKET fd,
     const uint8_t *buf,
     size_t size);
+/*
+ * Connect to the given target using TCP. 'control' is to distinguish the data
+ * socket from the control socket. For TCP, the data socket and control socket
+ * are assumed to be on the same host and consecutive port numbers, so 'port'
+ * is incremented by 1 if 'control' is non-zero.
+ */
 TSS2_RC
 socket_connect (
     const char *hostname,
     uint16_t port,
+    int control,
+    SOCKET *socket);
+/*
+ * Connect to the given target using unix domain sockets. (Not available on
+ * "_WIN32".) If 'control' is non-zero, ".ctrl" is appended to 'path'.
+ */
+TSS2_RC
+socket_connect_unix (
+    const char *path,
+    int control,
     SOCKET *socket);
 TSS2_RC
 socket_close (

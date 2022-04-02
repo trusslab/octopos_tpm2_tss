@@ -31,7 +31,7 @@
  * is the first element of the path in the file list.
  *
  * @param[in] path The part of the path without profile to be moved.
- * @param[in] profile_name The profile_name must be the firt part of
+ * @param[in] profile_name The profile_name must be the first part of
  *            the path to be moved.
  * @param[in,out] file_ary The path array.
  * @param[in] n The size of the array.
@@ -73,7 +73,7 @@ move_path_to_top(
 
 /** Search a path for a certain profile in the path list.
  *
- * @param[in] profile_name The profile_name must be the firt part of
+ * @param[in] profile_name The profile_name must be the first part of
  *            the path to be moved.
  * @param[in] path The part of the path without profile to be moved.
  * @param[in,out] file_ary The path array.
@@ -168,7 +168,7 @@ check_hierarchy(
  * @retval TSS2_FAPI_RC_BAD_PATH: if path can't be used for deleting.
  * @retval TSS2_FAPI_RC_MEMORY: if the FAPI cannot allocate enough memory for
  *         internal operations or return parameters.
- * @retval TSS2_FAPI_RC_GENERAL_FAILURE if an internal error occured.
+ * @retval TSS2_FAPI_RC_GENERAL_FAILURE if an internal error occurred.
  * @retval TSS2_FAPI_RC_BAD_REFERENCE a invalid null pointer is passed.
  * @retval TSS2_FAPI_RC_BAD_VALUE if an invalid value was passed into
  *         the function.
@@ -357,7 +357,7 @@ Fapi_Delete(
  *         the function.
  * @retval TSS2_ESYS_RC_* possible error codes of ESAPI.
  * @retval TSS2_FAPI_RC_NOT_PROVISIONED FAPI was not provisioned.
- * @retval TSS2_FAPI_RC_GENERAL_FAILURE if an internal error occured.
+ * @retval TSS2_FAPI_RC_GENERAL_FAILURE if an internal error occurred.
  */
 TSS2_RC
 Fapi_Delete_Async(
@@ -419,14 +419,14 @@ Fapi_Delete_Async(
         /* No session will be needed these files can be deleted without
            interaction with the TPM */
         r = ifapi_non_tpm_mode_init(context);
-        return_if_error(r, "Initialize Entity_Delete");
+        goto_if_error(r, "Initialize Entity_Delete", error_cleanup);
         context->session1 = ESYS_TR_NONE;
 
         context->state = ENTITY_DELETE_GET_FILE;
     } else {
         /* Check whether TCTI and ESYS are initialized */
-        return_if_null(context->esys, "Command can't be executed in none TPM mode.",
-                       TSS2_FAPI_RC_NO_TPM);
+        goto_if_null(context->esys, "Command can't be executed in none TPM mode.",
+                       TSS2_FAPI_RC_NO_TPM, error_cleanup);
 
         /* If the async state automata of FAPI shall be tested, then we must not set
            the timeouts of ESYS to blocking mode.
@@ -435,12 +435,12 @@ Fapi_Delete_Async(
            to block until a result is available. */
 #ifndef TEST_FAPI_ASYNC
         r = Esys_SetTimeout(context->esys, TSS2_TCTI_TIMEOUT_BLOCK);
-        return_if_error_reset_state(r, "Set Timeout to blocking");
+        goto_if_error_reset_state(r, "Set Timeout to blocking", error_cleanup);
 #endif /* TEST_FAPI_ASYNC */
 
         /* A TPM session will be created to enable object authorization */
         r = ifapi_session_init(context);
-        return_if_error(r, "Initialize Entity_Delete");
+        goto_if_error(r, "Initialize Entity_Delete", error_cleanup);
 
         r = ifapi_get_sessions_async(context,
                                  IFAPI_SESSION_GENEK | IFAPI_SESSION1,
@@ -642,18 +642,27 @@ Fapi_Delete_Finish(
             fallthrough;
 
         statecase(context->state, ENTITY_DELETE_KEY_WAIT_FOR_AUTHORIZATION);
+            /* Delete persistent object if not prohibited. */
             if (object->misc.key.persistent_handle) {
-                r = ifapi_authorize_object(context, authObject, &auth_session);
-                FAPI_SYNC(r, "Authorize hierarchy.", error_cleanup);
+                if (object->misc.key.delete_prohibited) {
+                    LOG_ERROR("Failed to delete TPM key (%s) because it was not "
+                              "created by the tss Feature API",
+                              command->pathlist[command->path_idx]);
+                    context->state = ENTITY_DELETE_FILE;
+                    return TSS2_FAPI_RC_TRY_AGAIN;
+                } else {
+                    r = ifapi_authorize_object(context, authObject, &auth_session);
+                    FAPI_SYNC(r, "Authorize hierarchy.", error_cleanup);
 
-                /* Delete the persistent handle from the TPM. */
-                r = Esys_EvictControl_Async(context->esys, ESYS_TR_RH_OWNER,
-                                            object->handle,
-                                            auth_session,
-                                            ESYS_TR_NONE, ESYS_TR_NONE,
+                    /* Delete the persistent handle from the TPM. */
+                    r = Esys_EvictControl_Async(context->esys, ESYS_TR_RH_OWNER,
+                                                object->handle,
+                                                auth_session,
+                                                ESYS_TR_NONE, ESYS_TR_NONE,
                                             object->misc.key.persistent_handle);
-                goto_if_error(r, "Evict Control", error_cleanup);
-                context->state = ENTITY_DELETE_NULL_AUTH_SENT_FOR_KEY;
+                    goto_if_error(r, "Evict Control", error_cleanup);
+                    context->state = ENTITY_DELETE_NULL_AUTH_SENT_FOR_KEY;
+                }
             } else {
                 context->state = ENTITY_DELETE_FILE;
                 return TSS2_FAPI_RC_TRY_AGAIN;
